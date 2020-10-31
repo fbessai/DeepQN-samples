@@ -11,13 +11,15 @@ from dqn import Dqn, State
 from matplotlib import pyplot as plt
 
 
-NB_EPISODES = 1000
-NB_STEPS_PER_EPISODE = 1000
+NB_EPISODES = 1000  # max number of episodes  
+NB_STEPS_PER_EPISODE = 1000 
 
-LEARN_NN_SIZE = [80, 150]
-LEARN_EPS_DECAY = .993 # .993
-LEARN_ACTION_DEPTH = 5
-LEARN_ACTION_DISCOUNT = .99  #.99
+LEARN_NN_SIZE = [80, 150] # Neural net size by layer
+LEARN_EPS_DECAY = .993 #  Exploration rate decay. default =.993 
+LEARN_ACTION_DEPTH = 5 # Depth of eligibility trace. 
+LEARN_ACTION_DISCOUNT = .99  # discount factor for eligibility trace
+
+LEARN_EPISODES = 700 # number of learning episodes
 
 
 
@@ -66,7 +68,7 @@ for episode in range(NB_EPISODES):
     state = State(env.reset()) # initial state of the environement 
     action = Action.DO_NOTHING 
     
-    learn = episode <= 400;
+    learn = episode <= LEARN_EPISODES;
     
 
     for step in range (NB_STEPS_PER_EPISODE): # max number of steps for one episode
