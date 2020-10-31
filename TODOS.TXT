@@ -1,0 +1,5 @@
+## Improvement options :
+- Coordiate resolution 
+- Realtime feedback loop
+
+- 
