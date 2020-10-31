@@ -5,6 +5,8 @@ Created on Sun Oct 27 22:19:48 2019
 
 @author: fbessai
 """
+import os
+import keras
 import numpy as np
 import gym
 from dqn import Dqn, State
@@ -19,23 +21,15 @@ LEARN_EPS_DECAY = .993 #  Exploration rate decay. default =.993
 LEARN_ACTION_DEPTH = 5 # Depth of eligibility trace. 
 LEARN_ACTION_DISCOUNT = .99  # discount factor for eligibility trace
 
-LEARN_EPISODES = 700 # number of learning episodes
+LEARN_EPISODES = 400 # number of learning episodes
 
+LEARN_SAVE = False # save after learning
+LEARN_RELOAD = False # reload from saved checkpoint
 
 
 RESULT_TOTALS = [] # set of the accumulated reward per episode
 
-
-env = gym.make('LunarLander-v2') # create gym the environment
-
-
-print(env.action_space.n)
-print(env.observation_space.shape[0])
-
-nnet = Dqn(env.action_space, env.observation_space.shape[0], LEARN_NN_SIZE, LEARN_EPS_DECAY, LEARN_ACTION_DEPTH, LEARN_ACTION_DISCOUNT)
-
-        
-        
+  
 
 class Action:  # action space 
     DO_NOTHING  = 0 
@@ -59,6 +53,36 @@ def dqn_policy(state, explore): # determines the action to take given the state
 
     return Action.getActionFromVec(actions)
 
+
+def save(dqn):
+    dqn.nn.save('saved_learning.nn')
+
+def load():
+    loadednn = None
+    if os.path.isfile('saved_learning.nn'):
+        print("=> loading checkpoint... ")
+        loadednn = keras.models.load_model('saved_learning.nn')
+    else:
+        print("no checkpoint found...")
+        
+    return loadednn
+
+
+################################################################
+################################################################
+    
+
+env = gym.make('LunarLander-v2') # create gym the environment
+
+
+print(env.action_space.n)
+print(env.observation_space.shape[0])
+
+nnet = Dqn(env.action_space, env.observation_space.shape[0], LEARN_NN_SIZE, LEARN_EPS_DECAY, LEARN_ACTION_DEPTH, LEARN_ACTION_DISCOUNT)
+
+if LEARN_RELOAD:
+    nnet.nn = load();
+    
 
 
 for episode in range(NB_EPISODES):
@@ -100,16 +124,24 @@ for episode in range(NB_EPISODES):
             RESULT_TOTALS.append(episode_rewards)
             break
     
-    if(learn):    
-        nnet.learn(np.average(RESULT_TOTALS)) 
+    if(learn):
+        nnet.learn(np.average(RESULT_TOTALS))
+    else:
+        if(LEARN_SAVE):
+             save(nnet);
+             LEARN_SAVE = False;
+            
 
     plt.plot(RESULT_TOTALS)
+    plt.grid(b=True,which='major', axis='y', color='r', linestyle='-', linewidth=.5)
     plt.show()
+   
    
 print(RESULT_TOTALS)
 print('Max reward : ' + str(max(RESULT_TOTALS)))
 
 plt.plot(RESULT_TOTALS)
+plt.grid(b=True,which='major', axis='y', color='r', linestyle='-', linewidth=.5)
 plt.show()
 
 env.close()
