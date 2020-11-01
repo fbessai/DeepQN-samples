@@ -18,8 +18,9 @@ NB_STEPS_PER_EPISODE = 1000
 
 LEARN_NN_SIZE = [80, 150] # Neural net size by layer
 LEARN_EPS_DECAY = .993 #  Exploration rate decay. default =.993 
-LEARN_ACTION_DEPTH = 5 # Depth of eligibility trace. 
+LEARN_N_STEPS_FORWARD = 5 # Depth of eligibility trace. 
 LEARN_ACTION_DISCOUNT = .99  # discount factor for eligibility trace
+LEARN_ALPHA = 1; # Q-learning rate, how much the current value is used compared to the (current reward + future rewards)
 
 LEARN_EPISODES = 400 # number of learning episodes
 
@@ -42,7 +43,7 @@ class Action:  # action space
         return  np.select( actionVec, Action.ACTIONS)
     
 
-TARGET = State([0,0]);
+TARGET = State([0,0,0,0,0,0,0,0]);
 
 
 
@@ -78,7 +79,7 @@ env = gym.make('LunarLander-v2') # create gym the environment
 print(env.action_space.n)
 print(env.observation_space.shape[0])
 
-nnet = Dqn(env.action_space, env.observation_space.shape[0], LEARN_NN_SIZE, LEARN_EPS_DECAY, LEARN_ACTION_DEPTH, LEARN_ACTION_DISCOUNT)
+nnet = Dqn(env.action_space, env.observation_space.shape[0], LEARN_NN_SIZE, LEARN_EPS_DECAY, LEARN_N_STEPS_FORWARD, LEARN_ACTION_DISCOUNT, LEARN_ALPHA)
 
 if LEARN_RELOAD:
     nnet.nn = load();
@@ -106,9 +107,10 @@ for episode in range(NB_EPISODES):
         
         state.action = action
         state.reward = reward
-        state.done =  done
+        #state.done =  done
         
         state.next_state = State(next_state)
+        state.next_state.done = done
         
         if(learn):
             nnet.addToMemory(state) # memorize the step transition values

@@ -17,14 +17,23 @@ from collections import deque
 class State:
 
     def __init__(self, obs):
-        self.obs= obs
+        self.obs = obs
         self.next_state = None
         self.action = None
+        self.qvalue = 0.0
         self.reward = 0.0
         self.done = False
         
+        # reduce resolution
+#        self.obs[0] = round(10 * self.obs[0]) / 10
+#        self.obs[1] = round(10 * self.obs[1]) / 10
+#        self.obs[2] = round(10 * self.obs[2]) / 10
+#        self.obs[3] = round(10 * self.obs[3]) / 10
+#        self.obs[4] = round(10 * self.obs[4]) / 10
+#        self.obs[5] = round(10 * self.obs[5]) / 10
         
-    def q_value(self, nn, discount, n_steps):
+    # temporal difference  
+    def td_value(self, nn, discount, n_steps, learn_alpha):
         if( self.next_state == None  or self.done):
             return self.reward
         
@@ -34,9 +43,17 @@ class State:
             q_values = nn.predict(np.array([self.next_state.obs]), verbose=0)
             future_reward = np.amax(q_values,axis=1)[0]
         else:
-            future_reward = self.next_state.q_value(nn, discount,n_steps-1)
+            future_reward = self.next_state.q_value(nn, discount, n_steps-1, learn_alpha, False)
         
         return self.reward + discount * future_reward
+    
+ 
+    def q_value(self, nn, discount, n_steps, learn_alpha, update):
+        qvalue = (1- learn_alpha) * self.qvalue + learn_alpha * self.td_value(nn, discount, n_steps, learn_alpha)
+        
+        if update:
+            self.qvalue = qvalue
+        return qvalue
     
     def next_state(self):
         return self.next_state
@@ -47,13 +64,14 @@ class State:
 class Dqn:
 
 
-    def __init__(self, action_space, state_size, layer_sizes, learn_eps_decay, learn_action_depth, learn_action_discount):
+    def __init__(self, action_space, state_size, layer_sizes, learn_eps_decay, learn_n_steps_forward, learn_action_discount, learn_alpha):
 
         self.action_space = action_space
         self.state_size = state_size
         self.layer_sizes = layer_sizes
         
-        self.learn_action_depth =  learn_action_depth
+        self.learn_n_steps_forward =  learn_n_steps_forward
+        self.learn_alpha = learn_alpha
         
         self.lr = 0.001  # learning rate 
         self.discount = learn_action_discount # discount factor of the future rewards
@@ -110,26 +128,18 @@ class Dqn:
 
         dones = [state.done for state in states]
         dones = np.asarray(dones)
+               
         
-        targetReward = reward # by default, which corresponds to DONE
+        targetQValues = [  state.q_value(self.nn, self.discount, self.learn_n_steps_forward, self.learn_alpha, True) for state in states]
         
-        #The value of the rewards should be updated only in case this is not the final step (DONE=False) 
-#        predActionsRewards = self.nn.predict(next_obs, verbose=0)
-#        
-#        pred2 = np.amax(predActionsRewards,axis=1)
-#        pred3 = (reward + self.discount * pred2)[np.invert(dones)]
-#        targetReward[np.invert(dones)] = pred3
+        output_actions = self.nn.predict(obs, verbose=0)
         
-        
-        targetReward = [state.q_value(self.nn, self.discount, self.learn_action_depth) for state in states]
-        
-        output = self.nn.predict(obs, verbose=0)
-
-        output[np.arange(0,len(output)), actions] = targetReward
+        # output_actions shape is (obs number, action space number)
+        output_actions[np.arange(0,len(output_actions)), actions] = targetQValues # for all observations, target the action index and updated its reward
         
         
         
-        self.nn.fit(obs, output, epochs=1, verbose=0)
+        self.nn.fit(obs, output_actions, epochs=1, verbose=0)
         
         
 
